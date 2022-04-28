@@ -1,0 +1,189 @@
+<header>
+	<script src="https://d3js.org/d3.v7.min.js"></script>
+</header>
+<style>
+	body {
+	}
+</style>
+
+<script>
+
+
+// source: https://www.currentresults.com/Weather/Europe/Cities/temperature-july.php 	date: 4/28/22
+const averageTemps = [
+	[66, 53.8008], [74, 50.6292], [82, 38.7223],  
+	[80, 46.0569], [74, 51.5072], [72, 49.8153], 
+	[82, 45.7640], [88, 40.4168], [69, 53.4808],
+	[86, 43.2965], [85, 45.4642], [72, 53.9006], 
+	[71, 43.7384], [74, 55.7558], [74, 48.1351], 
+	[86, 26.1420], [81, 43.7102], [74, 56.3269], 
+	[71, 59.9139], [77, 48.8566], [89, 42.4304],
+	[74, 50.0755], [80, 42.6629]
+	];
+
+const cityNames = [ 
+	"Leeds", "Lille", "Lisbon",
+	"Ljubljana", "London", "Luxembourg",
+	"Lyon", "Madrid", "Manchester",
+	"Marseille", "Milan", "Minsk",
+	"Monaco", "Moscow", "Munich",
+	"Naples", "Nice", "Nizhny & Novogrod",
+	"Oslo", "Paris", "Podgorica",
+	"Prague", "Pristina"
+	];
+
+const minX = d3.min(averageTemps, (d, i) => {	return averageTemps[i][1];	});
+const maxX = d3.max(averageTemps, (d, i) => {	return averageTemps[i][1];	});
+const minY = d3.min(averageTemps, (d, i) => {	return averageTemps[i][0];	});
+const maxY = d3.max(averageTemps, (d, i) => {	return averageTemps[i][0];	});
+
+var xScale = d3.scaleLinear().domain([minX-1, maxX+1]);
+var yScale = d3.scaleLinear().domain([minY-1, maxY+1]);
+
+const width = "55%", minWidth = 400, maxWidth = 700, maxHeight = 700*11/16;
+var containerWidth, height; 				// defined in scaleUpdate()
+
+var viewport = d3.select("body")
+	.append("svg")
+	.attr("class", "viewport")
+	.attr("width", width)
+	.style("min-width", minWidth)
+	.style("max-width", maxWidth)
+	.style("border", "solid 1px black");
+
+scaleUpdate();
+
+viewport.selectAll("circle")
+	.data(averageTemps)
+	.enter()
+	.append("circle")
+	.attr("r", 3)
+	.attr("cx", (d, i) => {
+		return xScale(averageTemps[i][1]);
+	})
+	.attr("cy", (d, i) => {
+		return yScale(averageTemps[i][0]);
+	})
+	.attr("fill", (d, i) => {
+		var red, blue;
+		if(averageTemps[i][0] > 76) {
+			red = 255*(averageTemps[i][0] - 77)/12;
+			blue = 0;
+		} else {
+			blue = 255*(77 - averageTemps[i][0])/11;
+			red = 0;
+		}
+		return "rgb(" + red + ",0," + blue + ")";
+	})
+	.append("title")
+		.text( (d, i) => {	return cityNames[i];	});
+
+
+var xAxis = d3.axisBottom(xScale)
+	.tickSizeOuter(0)
+	.ticks(25, 60);
+var yAxis = d3.axisLeft(yScale)
+	.tickSize(containerWidth*0.87)
+	.tickValues([67, 70, 73, 76, 79, 82, 85, 88, 91]);
+
+var xLabelOffset = height*(0.06+0.03*(maxHeight-height)/205);
+
+viewport.append("g")
+	.attr("class","xVectors")
+	.call(xAxis)
+	.attr("transform", "translate(0," + height*0.885 + ")")
+	.append("text")
+		.attr("class", "xLabel")
+		.attr("text-anchor", "end")
+		.attr("fill", "currentColor")
+		.text("Latitude \xB0N")
+		.attr("transform", "translate("+ containerWidth*0.94 +"," + xLabelOffset + ")");
+
+var yLabelOffset = -containerWidth*(0.9+0.018*(maxWidth-containerWidth)/300);
+
+viewport.append("g")
+	.attr("class","yVectors")
+	.call(yAxis)
+	.attr("transform", "translate(" + containerWidth*0.95 + ", 0)")
+	.attr("stroke-dasharray", "1 2")
+	.call(g => g.select(".domain")
+		.remove())
+	.append("text")
+		.attr("class", "yLabel")
+		.attr("text-anchor", "end")
+		.attr("fill", "currentColor")
+		.text("Temperature \xB0F")
+		.attr("transform", "translate("+ yLabelOffset + "," + height*0.11 + ") rotate(-90)");
+
+viewport.append("text")
+	.attr("class", "title")
+	.attr("x", "50%")
+	.attr("y", "6%")
+	.attr("text-anchor", "middle")
+	.attr("fill", "black")
+	.style("font-family", "arial narrow, arial")
+	.text("July Temperatures of European Cities and Their Latitudes");
+
+	if(containerWidth <= 480) {
+		viewport.select(".title")
+			.style("font-size", "12");
+	} else {
+		viewport.select(".title")
+			.style("font-size", "16");
+	}
+
+function resize() {
+	scaleUpdate();
+	viewport.selectAll("circle")
+		.attr("cx", (d, i) => {
+			return xScale(averageTemps[i][1]);
+		})
+		.attr("cy", (d, i) => {
+			return yScale(averageTemps[i][0]);
+		});
+
+	axisUpdate();
+
+	if(containerWidth <= 480) {
+		viewport.select(".title")
+			.style("font-size", "12");
+		viewport.selectAll("circle")
+			.attr("r", 2);
+	} else {
+		viewport.select(".title")
+			.style("font-size", "16");
+		viewport.selectAll("circle")
+			.attr("r", 3);
+	}
+}
+
+function scaleUpdate() {
+	containerWidth = +d3.select(".viewport").style('width').slice(0, -2);
+	height = containerWidth*(11/16);
+	viewport.attr("height", height);
+	xScale.range([containerWidth*0.08, containerWidth*0.95]);
+	yScale.range([height*0.885, height*0.15]);
+
+}
+
+function axisUpdate() {
+	yAxis.tickSize(containerWidth*0.87);
+	xLabelOffset = height*(0.06+0.03*(maxHeight-height)/205);
+	viewport.select(".xVectors")
+		.call(xAxis)
+		.attr("transform", "translate(0," + height*0.885 + ")")
+		.select(".xLabel")
+			.attr("transform", "translate("+ containerWidth*0.94 +"," + xLabelOffset + ")");
+	yLabelOffset = -containerWidth*(0.9+0.018*(maxWidth-containerWidth)/300);
+	viewport.select(".yVectors")
+		.call(yAxis)
+		.attr("transform", "translate(" + containerWidth*0.95 + ", 0)")
+		.call(g => g.select(".domain")
+			.remove())
+		.select(".yLabel")
+			.attr("transform", "translate("+ yLabelOffset + "," + height*0.11 + ") rotate(-90)");
+}
+
+window.onresize = resize;
+
+</script>
